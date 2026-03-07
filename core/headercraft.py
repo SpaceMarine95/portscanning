@@ -17,9 +17,9 @@ import struct
 def get_host_ip():
     command = "ip route show".split()
     runner = subprocess.run(command, stdout=subprocess.PIPE).stdout.decode() # gives the "ip route show" bash execution results
-    pattern = "(\\b25[0-5]|\\b2[0-4][0-9]|\\b[01]?[0-9][0-9]?)(\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}"
-    regex = re.search(pattern, runner)
-    host_ip = regex.group(0).strip()
+    pattern = r"(\d+\.\d+\.\d+\.\d+)"
+    matches = list(re.finditer(pattern, runner))
+    host_ip = matches[4].group(0).replace("src ","")
     print(f"Host IP: {host_ip}")
     # returns the first IP address (Default) as a str type
     return host_ip
@@ -121,5 +121,5 @@ if __name__ == "__main__":
     targetIP = input("Target IP address: ").strip()
     dst_port = input("Destination port: ").strip() # types are refined within
     send_SYN_probe(targetIP, dst_port)
-
+    
 # Get the response
