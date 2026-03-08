@@ -15,6 +15,10 @@ It should:
 
 *** This phase is the heart of the project. ***
 
+if ports get occupied during tests:
+1. sudo lsof -iTCP -sTCP:LISTEN -n -P
+2. kill -9 <PID>
+
 
 # Phase 2 — Clean parsing and reporting
 Once the scan works, make the output readable.
