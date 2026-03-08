@@ -15,28 +15,29 @@ Socket Type: Determines the communication protocol and characteristics.
 
 import socket
 
-server_port = 12344
+server_port = 12345
 
 # Ask OS for the socket -> Bind it to a IP address, port -> Listen for incoming connections
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind( ('0.0.0.0',server_port) )
-print(s)
+print(f"Server listening on port: {server_port}, for all interfaces")
 s.listen(5) # parameter 5 -> maximum number of queued incoming connections.
 
 while True:
     # Accept connection
     conn, addr = s.accept()
-    print('Incoming transmission from: ', addr)
+    print('Incoming transmission from: ', addr, flush=True)
 
     # Receive data from the client
     data = conn.recv(1024) # 1024 -> Maximum amount of data (in bytes) to be received at once from the socket
-    if not data:
-        break
+    # if not data:
+    #     conn.close()
+    #     continue
     
-    print("Received: ", repr(data))
+    print("Received: ", repr(data), flush=True)
 
     # Send a response back to the client
-    conn.sendall(b'hello, client')
+    conn.sendall(b'hello, client\n')
 
     # Close the current client connection
     conn.close()
