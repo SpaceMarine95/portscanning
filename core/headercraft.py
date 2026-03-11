@@ -60,8 +60,20 @@ def craft_IP_header(host_ip, target_ip):
     return ip_header
 
 # Craft SYN packets
+def checksum(data: bytes) -> int:
+    # pad to even length
+    if len(data) % 2 == 1:
+        data += b'\x00'
 
-def craft_TCP_header(src_port=65432, dst_port=80):    
+    total = 0
+    for i in range(0, len(data), 2):
+        word = (data[i] << 8) + data[i + 1]
+        total += word
+        total = (total & 0xffff) + (total >> 16)
+
+    return (~total) & 0xffff
+
+def craft_TCP_header(src_ip, dst_ip, src_port=65432, dst_port=80):    
     # TCP header fields
     tcp_fields = {
         "src_port" : int(src_port),
@@ -82,6 +94,8 @@ def craft_TCP_header(src_port=65432, dst_port=80):
         "urg_ptr" : 0,
     }
     
+    payload = b""
+
     tcp_offset_res = (tcp_fields["doff"] << 4 ) + 0
     tcp_flags = (tcp_fields["flag_fin"] + 
                  (tcp_fields["flag_syn"] << 1) + 
@@ -100,17 +114,39 @@ def craft_TCP_header(src_port=65432, dst_port=80):
                              tcp_fields["max_window"],
                              tcp_fields["checksum"],
                              tcp_fields["urg_ptr"])
+    pseudo_header = struct.pack(
+        "!4s4sBBH",
+        socket.inet_aton(src_ip),
+        socket.inet_aton(dst_ip),
+        0,
+        socket.IPPROTO_TCP,
+        len(tcp_header) + len(payload)
+    )
+
+    tcp_fields["checksum"] = checksum(pseudo_header + tcp_header + payload)
+    print(f"TCP Checksum calculated: {tcp_fields["checksum"]}")
+    tcp_header = struct.pack("!HHLLBBHHH",
+                             tcp_fields["src_port"],
+                             tcp_fields["dst_port"],
+                             tcp_fields["syn_seq"],
+                             tcp_fields["ack_seq"],
+                             tcp_offset_res,
+                             tcp_flags,
+                             tcp_fields["max_window"],
+                             tcp_fields["checksum"],
+                             tcp_fields["urg_ptr"])
+    print("TCP header is now repacked with the real checksum!")
     return tcp_header
 
 # Send the crafted packet
 def send_SYN_probe(target_ip, dst_port):
-    host_ip = get_host_ip()
+    host_ip = get_host_ip() # roll back to function get_host_ip when dropping issue is fixed
     src_port = input("Select source port(1-65535): ")
     if src_port == "":
         src_port = 65432
     src_port = int(src_port)
     ip_header = craft_IP_header(host_ip, target_ip)
-    tcp_header = craft_TCP_header(src_port, dst_port)
+    tcp_header = craft_TCP_header(host_ip, target_ip, src_port, dst_port)
     packet = ip_header + tcp_header
 
     s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
